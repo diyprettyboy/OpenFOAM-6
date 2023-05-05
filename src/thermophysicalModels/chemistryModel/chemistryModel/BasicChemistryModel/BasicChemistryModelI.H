@@ -23,22 +23,31 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "BasicChemistryModel.H"
-
 // * * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * //
 
-template<class ReactionThermo>
-inline ReactionThermo& Foam::BasicChemistryModel<ReactionThermo>::thermo()
+inline const Foam::fvMesh& Foam::basicChemistryModel::mesh() const
 {
-    return thermo_;
+    return mesh_;
 }
 
 
-template<class ReactionThermo>
-inline const ReactionThermo&
-Foam::BasicChemistryModel<ReactionThermo>::thermo() const
+inline Foam::Switch Foam::basicChemistryModel::chemistry() const
 {
-    return thermo_;
+    return chemistry_;
+}
+
+
+inline const Foam::DimensionedField<Foam::scalar, Foam::volMesh>&
+Foam::basicChemistryModel::deltaTChem() const
+{
+    return deltaTChem_;
+}
+
+
+inline Foam::DimensionedField<Foam::scalar, Foam::volMesh>&
+Foam::basicChemistryModel::deltaTChem()
+{
+    return deltaTChem_;
 }
 
 

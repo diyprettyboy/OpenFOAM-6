@@ -22,23 +22,25 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::BasicChemistryModel
+    Foam::basicChemistryModel
 
 Description
-    Basic chemistry model templated on thermodynamics
+    Base class for chemistry models
 
 SourceFiles
-    BasicChemistryModelI.H
-    BasicChemistryModel.C
+    basicChemistryModelI.H
+    basicChemistryModel.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef BasicChemistryModel_H
-#define BasicChemistryModel_H
+#ifndef basicChemistryModel_H
+#define basicChemistryModel_H
 
-#include "basicChemistryModel.H"
-#include "autoPtr.H"
-#include "runTimeSelectionTables.H"
+#include "IOdictionary.H"
+#include "Switch.H"
+#include "scalarField.H"
+#include "volFields.H"
+#include "basicThermo.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -49,67 +51,138 @@ namespace Foam
 class fvMesh;
 
 /*---------------------------------------------------------------------------*\
-                     class BasicChemistryModel Declaration
+                   class basicChemistryModel Declaration
 \*---------------------------------------------------------------------------*/
 
-template<class ReactionThermo>
-class BasicChemistryModel
+class basicChemistryModel
 :
-    public basicChemistryModel
+    public IOdictionary
 {
+    // Private Member Functions
+
+        //- Construct as copy (not implemented)
+        basicChemistryModel(const basicChemistryModel&);
+
+        //- Disallow default bitwise assignment
+        void operator=(const basicChemistryModel&);
+
+
 protected:
 
     // Protected data
 
-        //- Thermo
-        ReactionThermo& thermo_;
+        //- Reference to the mesh database
+        const fvMesh& mesh_;
+
+        //- Chemistry activation switch
+        Switch chemistry_;
+
+        //- Initial chemical time step
+        const scalar deltaTChemIni_;
+
+        //- Maximum chemical time step
+        const scalar deltaTChemMax_;
+
+        //- Latest estimation of integration step
+        volScalarField::Internal deltaTChem_;
+
+
+    // Protected Member Functions
+
+        //- Return non-const access to the latest estimation of integration
+        //  step, e.g. for multi-chemistry model
+        inline volScalarField::Internal& deltaTChem();
+
+        //- Correct function - updates due to mesh changes
+        void correct();
 
 
 public:
 
     //- Runtime type information
-    TypeName("BasicChemistryModel");
-
-
-    //- Thermo type
-    typedef ReactionThermo reactionThermo;
-
-
-    //- Declare run-time constructor selection tables
-    declareRunTimeSelectionTable
-    (
-        autoPtr,
-        BasicChemistryModel,
-        thermo,
-        (ReactionThermo& thermo),
-        (thermo)
-    );
+    TypeName("basicChemistryModel");
 
 
     // Constructors
 
         //- Construct from thermo
-        BasicChemistryModel(ReactionThermo& thermo);
+        basicChemistryModel(basicThermo& thermo);
 
 
-    //- Selector
-    static autoPtr<BasicChemistryModel<ReactionThermo>> New
-    (
-        ReactionThermo& thermo
-    );
+    // Selectors
+
+        //- Generic New for each of the related chemistry model
+        template<class ChemistryModel>
+        static autoPtr<ChemistryModel> New
+        (
+            typename ChemistryModel::reactionThermo& thermo
+        );
 
 
     //- Destructor
-    virtual ~BasicChemistryModel();
+    virtual ~basicChemistryModel();
 
 
     // Member Functions
 
-        //- Return access to the thermo package
-        inline ReactionThermo& thermo();
+        //- Return const access to the mesh database
+        inline const fvMesh& mesh() const;
 
-        //- Return const access to the thermo package
-        inline const ReactionThermo& thermo() const;
+        //- Chemistry activation switch
+        inline Switch chemistry() const;
+
+        //- The number of species
+        virtual label nSpecie() const = 0;
+
+        //- The number of reactions
+        virtual label nReaction() const = 0;
+
+        //- Return the latest estimation of integration step
+        inline const volScalarField::Internal& deltaTChem() const;
+
+
+        // Functions to be derived in derived classes
+
+            // Fields
+
+                //- Return const access to chemical source terms [kg/m3/s]
+                virtual const volScalarField::Internal& RR
+                (
+                    const label i
+                ) const = 0;
+
+                //- Return access to chemical source terms [kg/m3/s]
+                virtual volScalarField::Internal& RR
+                (
+                    const label i
+                ) = 0;
+
+                //- Return reaction rate of the speciei in reactioni
+                virtual tmp<volScalarField::Internal> calculateRR
+                (
+                    const label reactioni,
+                    const label speciei
+                ) const = 0;
+
+
+            // Chemistry solution
+
+                //- Calculates the reaction rates
+                virtual void calculate() = 0;
+
+                //- Solve the reaction system for the given time step
+                //  and return the characteristic time
+                virtual scalar solve(const scalar deltaT) = 0;
+
+                //- Solve the reaction system for the given time step
+                //  and return the characteristic time
+                virtual scalar solve(const scalarField& deltaT) = 0;
+
+                //- Return the chemical time scale
+                virtual tmp<volScalarField> tc() const = 0;
+
+                //- Return the heat release rate [kg/m/s3]
+                virtual tmp<volScalarField> Qdot() const = 0;
 };
 
 
@@ -119,11 +192,11 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#ifdef NoRepository
-    #include "BasicChemistryModel.C"
-#endif
+#include "basicChemistryModelI.H"
 
-#include "BasicChemistryModelI.H"
+#ifdef NoRepository
+    #include "basicChemistryModelTemplates.C"
+#endif
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

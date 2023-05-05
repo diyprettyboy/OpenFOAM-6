@@ -23,38 +23,61 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "BasicChemistryModel.H"
+#include "basicChemistryModel.H"
+#include "fvMesh.H"
+#include "Time.H"
 
-// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+/* * * * * * * * * * * * * * * private static data * * * * * * * * * * * * * */
 
-template<class ReactionThermo>
-Foam::BasicChemistryModel<ReactionThermo>::BasicChemistryModel
-(
-    ReactionThermo& thermo
-)
-:
-    basicChemistryModel(thermo),
-    thermo_(thermo)
+namespace Foam
+{
+    defineTypeNameAndDebug(basicChemistryModel, 0);
+}
+
+// * * * * * * * * * * * * * Protected Member Functions  * * * * * * * * * * //
+
+void Foam::basicChemistryModel::correct()
 {}
 
 
-// * * * * * * * * * * * * * * * * Selectors * * * * * * * * * * * * * * * * //
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-template<class ReactionThermo>
-Foam::autoPtr<Foam::BasicChemistryModel<ReactionThermo>>
-Foam::BasicChemistryModel<ReactionThermo>::New(ReactionThermo& thermo)
-{
-    return basicChemistryModel::New<BasicChemistryModel<ReactionThermo>>
+Foam::basicChemistryModel::basicChemistryModel(basicThermo& thermo)
+:
+    IOdictionary
     (
-        thermo
-    );
-}
+        IOobject
+        (
+            thermo.phasePropertyName("chemistryProperties"),
+            thermo.db().time().constant(),
+            thermo.db(),
+            IOobject::MUST_READ_IF_MODIFIED,
+            IOobject::NO_WRITE
+        )
+    ),
+    mesh_(thermo.p().mesh()),
+    chemistry_(lookup("chemistry")),
+    deltaTChemIni_(readScalar(lookup("initialChemicalTimeStep"))),
+    deltaTChemMax_(lookupOrDefault("maxChemicalTimeStep", great)),
+    deltaTChem_
+    (
+        IOobject
+        (
+            thermo.phasePropertyName("deltaTChem"),
+            mesh().time().constant(),
+            mesh(),
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh(),
+        dimensionedScalar("deltaTChem0", dimTime, deltaTChemIni_)
+    )
+{}
 
 
 // * * * * * * * * * * * * * * * * Destructor  * * * * * * * * * * * * * * * //
 
-template<class ReactionThermo>
-Foam::BasicChemistryModel<ReactionThermo>::~BasicChemistryModel()
+Foam::basicChemistryModel::~basicChemistryModel()
 {}
 
 
